@@ -1,29 +1,37 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { Producto } from 'src/app/models/producto';
+import { ProductoService } from 'src/app/services/producto.service';
 @Component({
   selector: 'app-crear-producto',
   templateUrl: './crear-producto.component.html',
   styleUrls: ['./crear-producto.component.css']
 })
 export class CrearProductoComponent implements OnInit {
-  productoForm: FormGroup;
+  productoForm: FormGroup
+  titulo = 'Crear producto'
+  id: string | null
 
   constructor(private fb: FormBuilder,
-              private router: Router,
-              private toastr: ToastrService) { 
+    private router: Router,
+    private toastr: ToastrService,
+    private _productoService: ProductoService,
+    private aRouter: ActivatedRoute) {
     this.productoForm = this.fb.group({
-      producto:['', [Validators.required, Validators.minLength(2)]],
-      categoria:['', Validators.required],
-      ubicacion:['', Validators.required],
-      precio:['', Validators.required],
-      
-    })
-  }
+      producto: ['', [Validators.required, Validators.minLength(2)]],
+      categoria: ['', Validators.required],
+      ubicacion: ['', Validators.required],
+      precio: ['', Validators.required],
 
-  agregarProducto(){
+    })
+    this.id = this.aRouter.snapshot.paramMap.get('id')
+  }
+  ngOnInit(): void {
+    this.esEditar()
+  }
+  agregarProducto() {
     console.log(this.productoForm)
 
     const PRODUCTO: Producto = {
@@ -31,14 +39,45 @@ export class CrearProductoComponent implements OnInit {
       categoria: this.productoForm.get('categoria')?.value,
       ubicacion: this.productoForm.get('ubicacion')?.value,
       precio: this.productoForm.get('precio')?.value,
-      
+
     }
-    console.log(PRODUCTO);
-    this.toastr.success('El producto fue registrado con éxito!', 'Producto Registrado!');
-    this.router.navigate(['/'])
+
+    if (this.id !== null) {
+      //editamos producto
+      this._productoService.editarProducto(PRODUCTO, this.id).subscribe(data => {
+        this.toastr.success('El producto fue modificado con éxito!', 'Producto Actualizado!');
+        this.router.navigate(['/'])
+      },
+        error => {
+          console.log(error)
+        })
+    } else {
+      //agregamos producto
+      console.log(PRODUCTO);
+      this._productoService.guardarProducto(PRODUCTO).subscribe(data => {
+        this.toastr.success('El producto fue registrado con éxito!', 'Producto Registrado!');
+        this.router.navigate(['/'])
+      },
+        error => {
+          console.log(error)
+        })
+    }
   }
 
-  ngOnInit(): void {
+  esEditar() {
+    if (this.id !== null) {
+      this.titulo = 'Editar producto'
+      this._productoService.getProducto(this.id).subscribe(data => {
+        this.productoForm.setValue({
+          producto: data.nombre, 
+          categoria: data.categoria, 
+          ubicacion: data.ubicacion, 
+          precio: data.precio,
+        })
+      })
+    }
   }
+
+
 
 }
